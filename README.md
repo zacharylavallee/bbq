@@ -9,6 +9,7 @@ A mobile app for my BBQ / catering business. Customers download it, browse the m
 - **One codebase.** iOS and Android from the same TypeScript project.
 - **Cheap to run.** Free tiers wherever possible (Supabase, Expo). The main costs are Stripe fees per order and the store accounts.
 - **Easy to maintain.** Managed services only. No servers of my own.
+- **~100% test coverage.** Every PR keeps coverage at or near 100%, enforced in CI.
 
 ## Tech stack
 
@@ -22,7 +23,10 @@ A mobile app for my BBQ / catering business. Customers download it, browse the m
 | Server logic | Supabase Edge Functions | Create Stripe PaymentIntents and handle Stripe webhooks; secrets stay off the device |
 | Push notifications | Expo Notifications | New-order alerts for me; order-status updates for customers |
 | Builds / release | EAS Build + EAS Submit | Cloud builds, no Mac needed for Android; App Store and Play Store submission |
-| Tests | Jest + React Native Testing Library | Unit and component tests |
+| Tests | Jest (`jest-expo`) + React Native Testing Library | Unit and component tests with coverage thresholds |
+| Backend tests | Deno test (Edge Functions), pgTAP (RLS policies) | Payment and security logic is tested, not just the UI |
+| E2E tests | Maestro | Scripted flows on simulator/emulator (browse → cart → checkout) |
+| CI | GitHub Actions | Lint, type-check, tests and coverage gate on every PR |
 
 ### Payments
 
@@ -81,9 +85,22 @@ Row-level security: customers can read only their own orders; only admins can ed
 - `supabase/`: SQL migrations, seed menu, and Edge Functions (`create-payment-intent`, `stripe-webhook`).
 - Cart state lives on the device; orders and the menu live in Supabase.
 
+## Testing
+
+Target: as close to 100% coverage as possible. CI enforces it on every PR.
+
+- **Coverage gate:** Jest `coverageThreshold` at 100% for statements, functions, and lines, and at least 95% for branches. A PR that drops coverage fails CI.
+- **Exclusions:** generated files, type-only files, and thin config/entry files only. Each exclusion is listed and justified in `jest.config`.
+- **Pure logic first:** cart totals, pricing, pickup slots, and lead-time and blackout rules live in `src/lib/` as plain functions, so they're easy to test fully.
+- **Components and screens:** React Native Testing Library renders each screen, with Supabase and Stripe mocked at the client boundary.
+- **Edge Functions:** Deno tests for `create-payment-intent` (server-side pricing, rejecting tampered carts) and `stripe-webhook` (signature check, marking orders paid, idempotency).
+- **Database:** pgTAP tests confirm customers see only their own orders and only admins can edit menus and orders.
+- **E2E:** Maestro flows for the main paths, run before releases.
+- **Every phase PR** includes tests for its code and keeps the coverage gate green.
+
 ## Roadmap (one PR per phase)
 
-1. **Project skeleton:** Expo + TypeScript + Expo Router, tabs, menu screen with mock data, lint and tests.
+1. **Project skeleton:** Expo + TypeScript + Expo Router, tabs, menu screen with mock data, ESLint, Jest with 100% coverage thresholds, and a GitHub Actions CI workflow.
 2. **Cart and checkout flow:** cart, pickup/catering, date/time rules (no payment yet).
 3. **Supabase:** schema, seed menu, auth, real menu data, place orders, order history.
 4. **Admin:** order queue with realtime updates, status changes, menu editor, settings.
