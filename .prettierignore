@@ -3,3 +3,4 @@ node_modules/
 .expo/
 dist/
 package-lock.json
+README.md
