@@ -39,20 +39,21 @@ A mobile app for my BBQ / catering business. Customers download it, browse the m
 ## Features
 
 ### Customer
-- **Menu:** categories (meats by the pound, sandwiches, sides, desserts, catering packages), photos, prices, sold-out badges.
+- **Menu:** categories (meats by the pound, sandwiches, sides, desserts, catering packages), photos, prices, sold-out badges, and active promotions.
 - **Cart:** quantities, item options (e.g. sauce, size), notes.
-- **Checkout:** choose pickup or catering, pick a date and time (respects lead time and blackout dates), then pay.
+- **Checkout:** choose pickup or catering, pick a date and time (respects lead time and blackout dates), enter a discount code, then pay.
 - **Orders:** live status (new → confirmed → ready → completed) and order history.
 - **Account:** name, phone, and saved info for faster checkout.
 
 ### Admin (me)
 - **Order queue:** incoming orders in real time with a push notification, and buttons to update status.
-- **Menu editor:** add and edit items, prices, photos, sold-out toggle.
+- **Menu editor:** add, edit, reorder, and remove items and categories, set prices, upload photos from the camera or photo library, and toggle sold out. Nothing on the menu is hardcoded; it all lives in the database.
+- **Promotions:** featured banners and sale prices (e.g. "$2 off brisket this weekend") with start and end dates.
+- **Discount codes:** percent or fixed amount off, with an optional minimum order, expiry date, and usage limit. Codes are validated and applied on the server.
 - **Settings:** business hours, pickup slots, catering lead time (e.g. 48 h), minimum catering order, blackout dates.
 
 ### Later
 - Delivery with a delivery fee or zone
-- Promo codes
 - Loyalty / rewards
 - Catering deposits
 - Tips
@@ -63,12 +64,16 @@ A mobile app for my BBQ / catering business. Customers download it, browse the m
 
 - `profiles`: `id`, `name`, `phone`, `role` (`customer` | `admin`)
 - `menu_categories`: `id`, `name`, `sort_order`
-- `menu_items`: `id`, `category_id`, `name`, `description`, `price_cents`, `unit` (each / lb / tray), `image_url`, `is_available`, `is_catering`
-- `orders`: `id`, `customer_id`, `type` (`pickup` | `catering`), `scheduled_for`, `status`, `subtotal_cents`, `total_cents`, `notes`, `stripe_payment_intent_id`, `paid_at`, `created_at`
+- `menu_items`: `id`, `category_id`, `name`, `description`, `price_cents`, `unit` (each / lb / tray), `image_path` (Supabase Storage), `is_available`, `is_catering`, `sort_order`
+- `orders`: `id`, `customer_id`, `type` (`pickup` | `catering`), `scheduled_for`, `status`, `subtotal_cents`, `discount_code_id`, `discount_cents`, `total_cents`, `notes`, `stripe_payment_intent_id`, `paid_at`, `created_at`
 - `order_items`: `id`, `order_id`, `menu_item_id`, `name_snapshot`, `price_cents_snapshot`, `quantity`, `options`
+- `promotions`: `id`, `title`, `description`, `image_path`, `menu_item_id` (optional), `sale_price_cents` (optional), `starts_at`, `ends_at`, `is_active`
+- `discount_codes`: `id`, `code`, `kind` (`percent` | `fixed`), `amount`, `min_order_cents`, `starts_at`, `expires_at`, `max_uses`, `times_used`, `is_active`
 - `settings`: business hours, lead time, minimum catering order, blackout dates
 
-Row-level security: customers can read only their own orders; only admins can edit the menu and order status.
+Row-level security: customers can read only their own orders; only admins can edit the menu, promotions, discount codes, and order status. Discount codes aren't readable by customers at all; the server checks them at checkout.
+
+Photos live in a public `menu-photos` Supabase Storage bucket that only admins can upload to.
 
 ## Screens
 
@@ -76,7 +81,7 @@ Row-level security: customers can read only their own orders; only admins can ed
 2. **Cart / Checkout:** review, pickup or catering, date and time, pay.
 3. **Orders:** active order status and history.
 4. **Account:** profile and sign in/out.
-5. **Admin** (admins only): order queue, menu editor, settings.
+5. **Admin** (admins only): order queue, menu editor, promotions, discount codes, settings.
 
 ## Architecture
 
@@ -93,24 +98,25 @@ Target: as close to 100% coverage as possible. CI enforces it on every PR.
 - **Exclusions:** generated files, type-only files, and thin config/entry files only. Each exclusion is listed and justified in `jest.config`.
 - **Pure logic first:** cart totals, pricing, pickup slots, and lead-time and blackout rules live in `src/lib/` as plain functions, so they're easy to test fully.
 - **Components and screens:** React Native Testing Library renders each screen, with Supabase and Stripe mocked at the client boundary.
-- **Edge Functions:** Deno tests for `create-payment-intent` (server-side pricing, rejecting tampered carts) and `stripe-webhook` (signature check, marking orders paid, idempotency).
-- **Database:** pgTAP tests confirm customers see only their own orders and only admins can edit menus and orders.
+- **Edge Functions:** Deno tests for `create-payment-intent` (server-side pricing, promotions and discount codes, rejecting tampered carts and invalid or expired codes) and `stripe-webhook` (signature check, marking orders paid, idempotency).
+- **Database:** pgTAP tests confirm customers see only their own orders, can't read discount codes, and only admins can edit the menu, promotions, codes, orders, and photos.
 - **E2E:** Maestro flows for the main paths, run before releases.
 - **Every phase PR** includes tests for its code and keeps the coverage gate green.
 
 ## Roadmap (one PR per phase)
 
 1. **Project skeleton:** Expo + TypeScript + Expo Router, tabs, menu screen with mock data, ESLint, Jest with 100% coverage thresholds, and a GitHub Actions CI workflow.
-2. **Cart and checkout flow:** cart, pickup/catering, date/time rules (no payment yet).
-3. **Supabase:** schema, seed menu, auth, real menu data, place orders, order history.
-4. **Admin:** order queue with realtime updates, status changes, menu editor, settings.
-5. **Payments:** Stripe Payment Sheet with Apple Pay and Google Pay, Edge Functions, webhook.
-6. **Push notifications:** new-order alerts for me, status updates for customers.
-7. **Polish and release:** icon, branding, EAS builds, TestFlight / internal testing, store listings.
+2. **Supabase and admin menu editor:** schema and migrations, seed menu, admin sign-in, real menu data in the app, and an admin tab to add and edit items, categories, prices, photos, and sold-out status.
+3. **Cart and checkout flow:** cart, pickup/catering, date/time rules (no payment yet).
+4. **Accounts and orders:** customer sign-in, place orders, order history.
+5. **Admin order queue:** incoming orders with realtime updates, status changes, settings (hours, lead time, blackout dates).
+6. **Payments, promotions, and discount codes:** Stripe Payment Sheet with Apple Pay and Google Pay, Edge Functions, webhook, plus admin screens for promotions and discount codes applied server-side.
+7. **Push notifications:** new-order alerts for me, status updates for customers.
+8. **Polish and release:** icon, branding, EAS builds, TestFlight / internal testing, store listings.
 
 ## Requirements / accounts needed
 
 - Node.js LTS and the Expo Go app on a phone for development.
-- Supabase project (free tier) for phase 3.
-- Stripe account (business details and bank account) for phase 5.
+- Supabase project (free tier) for phase 2. Development starts against a local Supabase; the hosted project is connected before release.
+- Stripe account (business details and bank account) for phase 6.
 - Apple Developer Program ($99/yr) and Google Play Console ($25 one-time) for release.
