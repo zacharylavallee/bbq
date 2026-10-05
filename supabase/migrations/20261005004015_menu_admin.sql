@@ -91,6 +91,7 @@ execute function public.set_updated_at();
 alter table public.profiles enable row level security;
 alter table public.menu_categories enable row level security;
 alter table public.menu_items enable row level security;
+revoke truncate on public.profiles, public.menu_categories, public.menu_items from anon, authenticated;
 
 create policy profiles_select_own_or_admin
 on public.profiles
@@ -202,6 +203,3 @@ on storage.objects
 for delete
 to authenticated
 using (bucket_id = 'menu-photos' and (select public.is_admin()));
-
-grant select on storage.objects to anon, authenticated;
-grant insert, update, delete on storage.objects to authenticated;

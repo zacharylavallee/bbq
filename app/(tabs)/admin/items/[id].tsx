@@ -39,7 +39,7 @@ import type { MenuItem, MenuUnit } from '../../../../src/types/menu';
 const units: MenuUnit[] = ['each', 'lb', 'tray'];
 
 export default function AdminItemScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, error: routeError } = useLocalSearchParams<{ id: string; error?: string }>();
   const isNew = String(id) === 'new';
   const source = useMenuSource();
   const version = useMenuVersion();
@@ -63,6 +63,7 @@ export default function AdminItemScreen() {
   const [photoRemoved, setPhotoRemoved] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const displayedError = error || (typeof routeError === 'string' ? routeError : '');
 
   if (state.status === 'loading') {
     return (
@@ -154,11 +155,18 @@ export default function AdminItemScreen() {
       return;
     }
 
+    if (routeError) {
+      router.setParams({ error: undefined });
+    }
     setBusy(true);
     setError('');
     setFieldErrors({});
+    let createdItemId: string | null = null;
     try {
       const itemId = isNew ? await createItem(validation.value) : String(id);
+      if (isNew) {
+        createdItemId = itemId;
+      }
       if (!isNew) {
         await updateItem(itemId, validation.value);
       }
@@ -170,7 +178,12 @@ export default function AdminItemScreen() {
       invalidate();
       router.back();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      const message = reason instanceof Error ? reason.message : String(reason);
+      setError(message);
+      if (createdItemId) {
+        invalidate();
+        router.replace(`/admin/items/${createdItemId}?error=${encodeURIComponent(message)}`);
+      }
     } finally {
       setBusy(false);
     }
@@ -208,9 +221,9 @@ export default function AdminItemScreen() {
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Stack.Screen options={{ title: isNew ? 'Add menu item' : item!.name }} />
-      {error ? (
+      {displayedError ? (
         <Text accessibilityRole="alert" style={styles.error}>
-          {error}
+          {displayedError}
         </Text>
       ) : null}
       <TextInput

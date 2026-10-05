@@ -129,6 +129,45 @@ describe('admin item editor', () => {
     );
   });
 
+  it('recovers the created item after a photo upload failure so a retry edits it', async () => {
+    const createdItem = { ...mockMenu.items[0], id: 'created-item', name: 'Burnt Ends' };
+    let currentMenu = mockMenu;
+    const source = {
+      getMenu: jest.fn().mockImplementation(async () => currentMenu),
+    };
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue(selectedPhoto());
+    jest.mocked(menuAdmin.createItem).mockImplementation(async () => {
+      currentMenu = { ...currentMenu, items: [...currentMenu.items, createdItem] };
+      return createdItem.id;
+    });
+    jest
+      .mocked(menuAdmin.replaceItemPhoto)
+      .mockRejectedValueOnce(new Error('photo upload failed'))
+      .mockResolvedValueOnce('created-item/photo.png');
+    jest.mocked(menuAdmin.updateItem).mockResolvedValue(undefined);
+
+    await renderRoutesWithSource(source, adminSession, {
+      initialUrl: '/admin/items/new',
+    });
+    await waitFor(() => expect(screen.getByLabelText('Item name')).toBeOnTheScreen());
+    await fireEvent.press(screen.getByRole('button', { name: 'Choose photo' }));
+    await waitFor(() => expect(screen.getByLabelText('Photo preview')).toBeOnTheScreen());
+    await fillValidItem();
+    await fireEvent.press(screen.getByRole('button', { name: 'Save item' }));
+
+    await waitFor(() => expect(screen.getByLabelText('Item name').props.value).toBe('Burnt Ends'));
+    expect(screen.getByRole('alert')).toHaveTextContent('photo upload failed');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Save item' }));
+    await waitFor(() =>
+      expect(menuAdmin.updateItem).toHaveBeenCalledWith(
+        'created-item',
+        expect.objectContaining({ name: 'Burnt Ends' }),
+      ),
+    );
+    expect(menuAdmin.createItem).toHaveBeenCalledTimes(1);
+  });
+
   it('accepts a library photo when its MIME type is missing', async () => {
     const uri = 'file:///photo-without-type.png';
     jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValueOnce({

@@ -1,6 +1,6 @@
 begin;
 
-select plan(30);
+select plan(34);
 
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.profiles'::regclass),
@@ -210,6 +210,7 @@ select lives_ok(
   'admin uploads menu photo'
 );
 reset role;
+select set_config('storage.allow_delete_query', 'true', true);
 
 set local role authenticated;
 select set_config(
@@ -223,16 +224,50 @@ select throws_ok(
   null,
   'customer cannot upload menu photos'
 );
+update storage.objects
+set name = 'test/customer-renamed.jpg'
+where bucket_id = 'menu-photos' and name = 'test/admin-upload.jpg';
+delete from storage.objects
+where bucket_id = 'menu-photos' and name = 'test/admin-upload.jpg';
 reset role;
+
+select is(
+  (select name from storage.objects where bucket_id = 'menu-photos' and name = 'test/admin-upload.jpg'),
+  'test/admin-upload.jpg',
+  'customer cannot update or delete admin menu photos'
+);
 
 set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
+select throws_ok(
+  $$insert into storage.objects (bucket_id, name) values ('menu-photos', 'test/anon-upload.jpg')$$,
+  '42501',
+  null,
+  'anon cannot upload menu photos'
+);
 select is(
   (select count(*)::int from storage.objects where bucket_id = 'menu-photos'),
   1,
   'anon reads public menu photos'
 );
 reset role;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"90000000-0000-4000-8000-000000000001","role":"authenticated"}',
+  true
+);
+select lives_ok(
+  $$delete from storage.objects where bucket_id = 'menu-photos' and name = 'test/admin-upload.jpg'$$,
+  'admin deletes menu photo'
+);
+reset role;
+select is(
+  (select count(*)::int from storage.objects where bucket_id = 'menu-photos'),
+  0,
+  'admin menu photo is deleted'
+);
 
 select * from finish();
 rollback;
