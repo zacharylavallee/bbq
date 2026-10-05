@@ -34,21 +34,22 @@ npx expo start
 Runs on every PR, on pushes to main, weekly, and on demand:
 
 - `npm audit signatures` — **fails the build** if registry signatures can't be verified.
-- `npm audit --omit=dev --audit-level=high` — **fails the build** on high/critical CVEs in production dependencies.
+- `npm audit --omit=dev --json` + `scripts/audit-gate.ts` — **fails the build** only when a high/critical finding in production deps has a _non-major_ fix available; findings with no fix or a major-only fix (like transitive Expo toolchain vulnerabilities) are reported, not blocked.
 - `npm audit --audit-level=none` — report only (all severities, dev deps included).
-- OSV-Scanner on `package-lock.json` + `scripts/osv-gate.ts` — **fails the build** if any malicious (`MAL-`) package is found; the findings table is also appended to the job summary.
+- OSV-Scanner on `package-lock.json` and `tools/npm/package-lock.json` + `scripts/osv-gate.ts` — **fails the build** if any malicious (`MAL-`) package is found; the findings table is also appended to the job summary.
 - zizmor — audits the workflow files themselves for common GitHub Actions misconfigurations.
+- StepSecurity Harden-Runner — first step of every job, in `audit` egress mode (logs outbound connections; not blocking yet).
+- OpenSSF Scorecard (`scorecard.yml`) — weekly + on pushes to main; publishes SARIF results to code scanning.
+- Socket — a GitHub app the repo owner installs separately; it comments on dependency PRs about supply-chain risks.
 
 Run them locally:
 
 ```bash
 npm audit signatures
-npm audit --omit=dev --audit-level=high
+npm audit --omit=dev --json > audit.json && node scripts/audit-gate.ts audit.json
 npm audit
 node scripts/osv-gate.ts osv.json   # after running osv-scanner yourself
 ```
-
-Also enable **Dependabot alerts** and **Dependabot security updates** under the repo's _Settings → Code security_, so GitHub opens fix PRs automatically.
 
 ### Dependabot auto-merge
 
@@ -56,11 +57,15 @@ Also enable **Dependabot alerts** and **Dependabot security updates** under the 
 
 Because Dependabot **security** updates ignore the `min-release-age` cooldown, the workflow also runs `node scripts/release-age.ts`, which looks up each updated version's publish date (npm registry, or the tag's commit date for GitHub Actions). If anything is younger than 3 days — or its date can't be determined — auto-merge is skipped and the workflow comments on the PR asking for a manual merge after the cooldown.
 
-Auto-merge only waits for checks that are **required** — without them it would merge immediately. To make it safe, enable:
+Auto-merge only waits for checks that are **required** — without them it would merge immediately. These settings live under _Settings → Advanced Security_ and the repo's rulesets. To make it safe, make sure the `main` ruleset requires all of these checks, exactly as GitHub displays them:
 
-- _Settings → General → Allow auto-merge_
-- a **ruleset on `main`** requiring the `CI / check` job and the Security checks (`Security / deps`, `Security / workflows`), with "Require branches to be up to date"
-- _Settings → Code security → Dependabot alerts_ and _Dependabot security updates_
+- `check`
+- `deps`
+- `workflows`
+- `Analyze (javascript-typescript)`
+- `Analyze (actions)`
+
+…with "Require branches to be up to date" enabled.
 
 ## Lint, typecheck, and tests
 

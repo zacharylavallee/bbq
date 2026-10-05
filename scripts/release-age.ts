@@ -10,12 +10,11 @@ import {
 const COOLDOWN_DAYS = 3;
 
 async function defaultFetcher(url: string): Promise<unknown> {
+  const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
   const response = await fetch(url, {
     headers: {
       accept: 'application/vnd.github+json, application/json',
-      ...(process.env.GITHUB_TOKEN && url.includes('api.github.com')
-        ? { authorization: `Bearer ${process.env.GITHUB_TOKEN}` }
-        : {}),
+      ...(token && url.includes('api.github.com') ? { authorization: `Bearer ${token}` } : {}),
     },
   });
   if (!response.ok) {

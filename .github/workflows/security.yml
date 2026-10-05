@@ -20,6 +20,10 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -35,8 +39,12 @@ jobs:
       - name: Verify npm package signatures
         run: npm audit signatures
 
-      - name: Gate on high/critical CVEs in production deps
-        run: npm audit --omit=dev --audit-level=high
+      # Blocks only on high/critical findings with a non-major fix available;
+      # transitive Expo toolchain vulns with no in-range fix are report-only.
+      - name: Gate on fixable high/critical CVEs in production deps
+        run: |
+          npm audit --omit=dev --json > audit.json || true
+          node scripts/audit-gate.ts audit.json
 
       - name: Report all severities (including dev deps)
         run: npm audit --audit-level=none || true
@@ -52,6 +60,7 @@ jobs:
         run: |
           set +e
           ./osv-scanner_linux_amd64 scan source --lockfile package-lock.json \
+            --lockfile tools/npm/package-lock.json \
             --format json --output-file osv.json
           code=$?
           set -e
@@ -69,6 +78,10 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

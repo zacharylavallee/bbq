@@ -9,101 +9,30 @@ updates:
     # Expo SDK pins these; they move together via `npx expo install --fix`.
     ignore:
       - dependency-name: expo
-        update-types:
-          [
-            'version-update:semver-major',
-            'version-update:semver-minor',
-            'version-update:semver-patch',
-          ]
       - dependency-name: 'expo-*'
-        update-types:
-          [
-            'version-update:semver-major',
-            'version-update:semver-minor',
-            'version-update:semver-patch',
-          ]
       - dependency-name: '@expo/*'
-        update-types:
-          [
-            'version-update:semver-major',
-            'version-update:semver-minor',
-            'version-update:semver-patch',
-          ]
       - dependency-name: react
-        update-types:
-          [
-            'version-update:semver-major',
-            'version-update:semver-minor',
-            'version-update:semver-patch',
-          ]
       - dependency-name: react-dom
-        update-types:
-          [
-            'version-update:semver-major',
-            'version-update:semver-minor',
-            'version-update:semver-patch',
-          ]
       - dependency-name: react-native
-        update-types:
-          [
-            'version-update:semver-major',
-            'version-update:semver-minor',
-            'version-update:semver-patch',
-          ]
       - dependency-name: 'react-native-*'
-        update-types:
-          [
-            'version-update:semver-major',
-            'version-update:semver-minor',
-            'version-update:semver-patch',
-          ]
       - dependency-name: '@react-native/*'
-        update-types:
-          [
-            'version-update:semver-major',
-            'version-update:semver-minor',
-            'version-update:semver-patch',
-          ]
       - dependency-name: '@react-native-community/*'
-        update-types:
-          [
-            'version-update:semver-major',
-            'version-update:semver-minor',
-            'version-update:semver-patch',
-          ]
       - dependency-name: jest-expo
-        update-types:
-          [
-            'version-update:semver-major',
-            'version-update:semver-minor',
-            'version-update:semver-patch',
-          ]
       - dependency-name: '@types/react'
-        update-types:
-          [
-            'version-update:semver-major',
-            'version-update:semver-minor',
-            'version-update:semver-patch',
-          ]
       - dependency-name: babel-preset-expo
-        update-types:
-          [
-            'version-update:semver-major',
-            'version-update:semver-minor',
-            'version-update:semver-patch',
-          ]
       - dependency-name: eslint-config-expo
-        update-types:
-          [
-            'version-update:semver-major',
-            'version-update:semver-minor',
-            'version-update:semver-patch',
-          ]
     groups:
       dev-minor-patch:
         applies-to: version-updates
         dependency-type: development
         update-types: ['minor', 'patch']
+  # Keeps the pinned npm itself current (tools/npm/node_modules/bin/npm in CI).
+  - package-ecosystem: npm
+    directory: /tools/npm
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 3
   - package-ecosystem: github-actions
     directory: /
     schedule:
