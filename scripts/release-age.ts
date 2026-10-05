@@ -14,7 +14,9 @@ async function defaultFetcher(url: string): Promise<unknown> {
   const response = await fetch(url, {
     headers: {
       accept: 'application/vnd.github+json, application/json',
-      ...(token && url.includes('api.github.com') ? { authorization: `Bearer ${token}` } : {}),
+      ...(token && new URL(url).hostname === 'api.github.com'
+        ? { authorization: `Bearer ${token}` }
+        : {}),
     },
   });
   if (!response.ok) {
