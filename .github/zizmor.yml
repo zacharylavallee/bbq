@@ -1,0 +1,6 @@
+# The 3-day cooldown is the repo owner's chosen supply-chain policy and matches
+# .npmrc `min-release-age=3`; zizmor's default of 7 is just a recommendation.
+rules:
+  dependabot-cooldown:
+    config:
+      days: 3
