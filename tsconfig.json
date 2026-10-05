@@ -5,7 +5,8 @@
     "types": ["jest", "react", "react-test-renderer", "node"],
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "allowImportingTsExtensions": true
   },
   "include": ["**/*.ts", "**/*.tsx"]
 }

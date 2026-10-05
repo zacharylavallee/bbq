@@ -1,0 +1,56 @@
+name: Dependabot auto-merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  automerge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      # Dependabot security updates ignore the .npmrc cooldown, so verify each
+      # updated version is at least 3 days old before enabling auto-merge.
+      - name: Check release age of updated dependencies
+        id: age
+        if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
+        run: node scripts/release-age.ts
+        env:
+          UPDATED_DEPENDENCIES_JSON: ${{ steps.meta.outputs.updated-dependencies-json }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment when an update is too new to auto-merge
+        if: steps.age.outputs.auto-merge == 'no'
+        # --edit-last re-posts into the same comment on every synchronize instead of spamming new ones
+        run: gh pr comment "$PR_URL" --edit-last --create-if-none --body "Auto-merge skipped - $BLOCKED is younger than the 3-day supply-chain cooldown (or its publish date is unknown). A maintainer should merge this PR manually after the cooldown."
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          BLOCKED: ${{ steps.age.outputs.blocked-reason }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for minor and patch updates
+        if: steps.age.outputs.auto-merge == 'yes'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

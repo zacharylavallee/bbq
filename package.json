@@ -1,8 +1,9 @@
 {
   "name": "bbq",
   "version": "1.0.0",
-  "packageManager": "npm@11.20.0",
+  "packageManager": "npm@12.2.0",
   "engines": {
+    "node": ">=24.15.0",
     "npm": ">=11.10.0"
   },
   "main": "expo-router/entry",
@@ -54,27 +55,6 @@
     "db:types": "supabase gen types typescript --local > src/types/database.ts && prettier --write src/types/database.ts",
     "test": "jest",
     "test:coverage": "jest --coverage"
-  },
-  "jest": {
-    "preset": "jest-expo",
-    "workerIdleMemoryLimit": "800MB",
-    "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|standard-navigation)"
-    ],
-    "collectCoverageFrom": [
-      "app/**/*.{ts,tsx}",
-      "src/**/*.{ts,tsx}",
-      "!**/*.d.ts",
-      "!src/types/**"
-    ],
-    "coverageThreshold": {
-      "global": {
-        "statements": 100,
-        "functions": 100,
-        "lines": 100,
-        "branches": 95
-      }
-    }
   },
   "private": true
 }

@@ -6,9 +6,40 @@ updates:
       interval: weekly
     cooldown:
       default-days: 3
+    # Expo SDK pins these; they move together via `npx expo install --fix`.
+    ignore:
+      - dependency-name: expo
+      - dependency-name: 'expo-*'
+      - dependency-name: '@expo/*'
+      - dependency-name: react
+      - dependency-name: react-dom
+      - dependency-name: react-native
+      - dependency-name: 'react-native-*'
+      - dependency-name: '@react-native/*'
+      - dependency-name: '@react-native-community/*'
+      - dependency-name: jest-expo
+      - dependency-name: '@types/react'
+      - dependency-name: babel-preset-expo
+      - dependency-name: eslint-config-expo
+    groups:
+      dev-minor-patch:
+        applies-to: version-updates
+        dependency-type: development
+        update-types: ['minor', 'patch']
+  # Keeps the pinned npm itself current (tools/npm/node_modules/bin/npm in CI).
+  - package-ecosystem: npm
+    directory: /tools/npm
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 3
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     cooldown:
       default-days: 3
+    groups:
+      actions:
+        applies-to: version-updates
+        patterns: ['*']
