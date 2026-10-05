@@ -50,6 +50,16 @@ node scripts/osv-gate.ts osv.json   # after running osv-scanner yourself
 
 Also enable **Dependabot alerts** and **Dependabot security updates** under the repo's _Settings → Code security_, so GitHub opens fix PRs automatically.
 
+### Dependabot auto-merge
+
+`.github/workflows/dependabot-automerge.yml` enables `gh pr merge --auto --squash` on Dependabot PRs whose update type is **semver-minor or semver-patch**; majors are left alone. Expo-managed packages (`expo`, `expo-*`, `react*`, `@expo/*`, `@react-native*`, etc.) are ignored in `dependabot.yml` because they move together via `npx expo install --fix` during an SDK bump.
+
+Auto-merge only waits for checks that are **required** — without them it would merge immediately. To make it safe, enable:
+
+- _Settings → General → Allow auto-merge_
+- a **ruleset on `main`** requiring the `CI / check` job and the Security checks (`Security / deps`, `Security / workflows`), with "Require branches to be up to date"
+- _Settings → Code security → Dependabot alerts_ and _Dependabot security updates_
+
 ## Lint, typecheck, and tests
 
 ```bash
