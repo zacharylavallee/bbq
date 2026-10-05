@@ -2,12 +2,12 @@
 
 ## Prerequisites
 
-Install Node.js 22 LTS. The easiest way is with [nvm](https://github.com/nvm-sh/nvm):
+Install Node.js 24.21.0 LTS (see `.nvmrc`). The easiest way is with [nvm](https://github.com/nvm-sh/nvm):
 
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"
-nvm install 22
+nvm install         # reads .nvmrc
 ```
 
 ## Install dependencies
@@ -27,7 +27,28 @@ npx expo start
 
 ## Dependency safety
 
-`.npmrc` sets `min-release-age=3`: npm refuses to install package versions published less than 3 days ago, which guards against freshly compromised releases. This requires **npm ≥ 11.10** (this repo pins `npm@11.20.0` via `packageManager`/`engines`; CI installs it explicitly). Add new dependencies the normal way (`npx expo install <pkg>` or `npm install <pkg>`) — the cooldown applies automatically, so a brand-new release may resolve to the previous version.
+`.npmrc` sets `min-release-age=3`: npm refuses to install package versions published less than 3 days ago, which guards against freshly compromised releases. This requires **npm ≥ 11.10** (this repo pins `npm@12.2.0` via `packageManager`/`engines`; CI installs it explicitly from `tools/npm/package-lock.json`). Add new dependencies the normal way (`npx expo install <pkg>` or `npm install <pkg>`) — the cooldown applies automatically, so a brand-new release may resolve to the previous version.
+
+### Security checks in CI (`.github/workflows/security.yml`)
+
+Runs on every PR, on pushes to main, weekly, and on demand:
+
+- `npm audit signatures` — **fails the build** if registry signatures can't be verified.
+- `npm audit --omit=dev --audit-level=high` — **fails the build** on high/critical CVEs in production dependencies.
+- `npm audit --audit-level=none` — report only (all severities, dev deps included).
+- OSV-Scanner on `package-lock.json` + `scripts/osv-gate.ts` — **fails the build** if any malicious (`MAL-`) package is found; the findings table is also appended to the job summary.
+- zizmor — audits the workflow files themselves for common GitHub Actions misconfigurations.
+
+Run them locally:
+
+```bash
+npm audit signatures
+npm audit --omit=dev --audit-level=high
+npm audit
+node scripts/osv-gate.ts osv.json   # after running osv-scanner yourself
+```
+
+Also enable **Dependabot alerts** and **Dependabot security updates** under the repo's _Settings → Code security_, so GitHub opens fix PRs automatically.
 
 ## Lint, typecheck, and tests
 

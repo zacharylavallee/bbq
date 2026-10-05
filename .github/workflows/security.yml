@@ -1,0 +1,77 @@
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  OSV_SCANNER_VERSION: '2.6.0'
+  OSV_SCANNER_SHA256: 'ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108'
+
+jobs:
+  deps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # tools/npm pins npm 12.2.0 in a lockfile (npm >= 11.10 is required for min-release-age)
+      - run: npm ci --prefix tools/npm
+      - run: echo "$PWD/tools/npm/node_modules/.bin" >> "$GITHUB_PATH"
+      - run: npm ci --ignore-scripts
+
+      - name: Verify npm package signatures
+        run: npm audit signatures
+
+      - name: Gate on high/critical CVEs in production deps
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Report all severities (including dev deps)
+        run: npm audit --audit-level=none || true
+
+      - name: Download osv-scanner ${{ env.OSV_SCANNER_VERSION }} and verify SHA256
+        run: |
+          curl -fsSLo osv-scanner_linux_amd64 \
+            "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SCANNER_SHA256}  osv-scanner_linux_amd64" | sha256sum --check
+          chmod +x osv-scanner_linux_amd64
+
+      - name: Scan lockfile with osv-scanner
+        run: |
+          set +e
+          ./osv-scanner_linux_amd64 scan source --lockfile package-lock.json \
+            --format json --output-file osv.json
+          code=$?
+          set -e
+          # exit 1 means "vulnerabilities found", which is expected and handled by the gate
+          if [ "$code" -gt 1 ]; then
+            echo "osv-scanner failed with exit code $code" >&2
+            exit "$code"
+          fi
+
+      - name: Gate on malicious packages
+        run: node scripts/osv-gate.ts osv.json
+
+  workflows:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+        with:
+          advanced-security: false
