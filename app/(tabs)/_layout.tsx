@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { useSession } from '../../src/auth/SessionProvider';
 import { colors } from '../../src/theme';
 
 export default function TabsLayout() {
+  const { isAdmin } = useSession();
   return (
     <Tabs
       screenOptions={{
@@ -32,6 +34,15 @@ export default function TabsLayout() {
         options={{
           title: 'Account',
           tabBarIcon: ({ color, size }) => <Ionicons name="person" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="admin"
+        options={{
+          title: 'Admin',
+          href: isAdmin ? undefined : null,
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Ionicons name="construct" color={color} size={size} />,
         }}
       />
     </Tabs>

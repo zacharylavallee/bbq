@@ -5,14 +5,19 @@ export interface MenuSection {
   data: MenuItem[];
 }
 
-export function groupMenu(menu: Menu): MenuSection[] {
+export function groupMenu(
+  menu: Menu,
+  { includeEmpty = false }: { includeEmpty?: boolean } = {},
+): MenuSection[] {
   return [...menu.categories]
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((category) => ({
       category,
-      data: menu.items.filter((item) => item.categoryId === category.id),
+      data: menu.items
+        .filter((item) => item.categoryId === category.id)
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
     }))
-    .filter((section) => section.data.length > 0);
+    .filter((section) => includeEmpty || section.data.length > 0);
 }
 
 export function findMenuItem(menu: Menu, id: string): MenuItem | undefined {
