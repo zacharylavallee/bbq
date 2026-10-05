@@ -54,6 +54,8 @@ Also enable **Dependabot alerts** and **Dependabot security updates** under the 
 
 `.github/workflows/dependabot-automerge.yml` enables `gh pr merge --auto --squash` on Dependabot PRs whose update type is **semver-minor or semver-patch**; majors are left alone. Expo-managed packages (`expo`, `expo-*`, `react*`, `@expo/*`, `@react-native*`, etc.) are ignored in `dependabot.yml` because they move together via `npx expo install --fix` during an SDK bump.
 
+Because Dependabot **security** updates ignore the `min-release-age` cooldown, the workflow also runs `node scripts/release-age.ts`, which looks up each updated version's publish date (npm registry, or the tag's commit date for GitHub Actions). If anything is younger than 3 days — or its date can't be determined — auto-merge is skipped and the workflow comments on the PR asking for a manual merge after the cooldown.
+
 Auto-merge only waits for checks that are **required** — without them it would merge immediately. To make it safe, enable:
 
 - _Settings → General → Allow auto-merge_

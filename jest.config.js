@@ -12,6 +12,7 @@ module.exports = {
     '!**/*.d.ts',
     '!src/types/**',
     '!scripts/osv-gate.ts', // thin CLI entry, tested via local runs rather than unit tests
+    '!scripts/release-age.ts', // thin CLI entry for the Dependabot age check
   ],
   coverageThreshold: {
     global: {
