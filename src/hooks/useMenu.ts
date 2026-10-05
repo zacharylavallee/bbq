@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { mockMenuSource } from '../data/mockMenu';
+import { defaultMenuSource } from '../data/defaultMenuSource';
 import type { MenuSource } from '../data/menuSource';
 import type { Menu } from '../types/menu';
 
@@ -8,17 +8,24 @@ export type MenuState =
 
 const menuCache = new WeakMap<MenuSource, Menu>();
 
-export function useMenu(source: MenuSource = mockMenuSource): MenuState & {
+export function useMenu(
+  source: MenuSource = defaultMenuSource,
+  version = 0,
+): MenuState & {
   reload: () => void;
 } {
   const [requestId, setRequestId] = useState(0);
-  const [result, setResult] = useState<{ requestId: number; state: MenuState } | null>(null);
+  const [result, setResult] = useState<{
+    requestId: number;
+    source: MenuSource;
+    state: MenuState;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const settle = (next: MenuState) => {
       if (!cancelled) {
-        setResult({ requestId, state: next });
+        setResult({ requestId, source, state: next });
       }
     };
     source.getMenu().then(
@@ -34,11 +41,11 @@ export function useMenu(source: MenuSource = mockMenuSource): MenuState & {
     return () => {
       cancelled = true;
     };
-  }, [source, requestId]);
+  }, [source, requestId, version]);
 
   const cached = menuCache.get(source);
   const state: MenuState =
-    result && result.requestId === requestId
+    result && result.requestId === requestId && result.source === source
       ? result.state
       : cached
         ? { status: 'ready', menu: cached }

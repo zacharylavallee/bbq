@@ -1,7 +1,11 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useMenu } from '../useMenu';
-import { mockMenu } from '../../data/mockMenu';
+import { mockMenu, mockMenuSource } from '../../data/mockMenu';
 import type { MenuSource } from '../../data/menuSource';
+
+jest.mock('../../lib/supabase', () => ({
+  supabase: null,
+}));
 
 describe('useMenu', () => {
   it('starts loading and becomes ready', async () => {
@@ -33,7 +37,15 @@ describe('useMenu', () => {
     }
   });
 
-  it('goes from loading to ready', async () => {
+  it('loads the mock menu source', async () => {
+    const { result } = await renderHook(() => useMenu(mockMenuSource));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    if (result.current.status === 'ready') {
+      expect(result.current.menu).toBe(mockMenu);
+    }
+  });
+
+  it('uses the default menu source when none is supplied', async () => {
     const { result } = await renderHook(() => useMenu());
     await waitFor(() => expect(result.current.status).toBe('ready'));
     if (result.current.status === 'ready') {
@@ -86,6 +98,32 @@ describe('useMenu', () => {
     expect(getMenu).toHaveBeenCalledTimes(2);
   });
 
+  it('refetches when the shared menu version changes while keeping the cached menu', async () => {
+    let resolveRefresh: (value: typeof mockMenu) => void = () => undefined;
+    const getMenu = jest
+      .fn<ReturnType<MenuSource['getMenu']>, []>()
+      .mockResolvedValueOnce(mockMenu)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRefresh = resolve;
+          }),
+      );
+    const source: MenuSource = { getMenu };
+    const { result, rerender } = await renderHook(
+      ({ version }: { version: number }) => useMenu(source, version),
+      { initialProps: { version: 0 } },
+    );
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    await rerender({ version: 1 });
+    expect(result.current.status).toBe('ready');
+    await act(async () => {
+      resolveRefresh(mockMenu);
+    });
+    expect(getMenu).toHaveBeenCalledTimes(2);
+    expect(result.current.status).toBe('ready');
+  });
+
   it('does not update state after unmount', async () => {
     let resolveMenu: (value: typeof mockMenu) => void = () => undefined;
     const source: MenuSource = {
@@ -96,7 +134,7 @@ describe('useMenu', () => {
     };
     const { result, unmount } = await renderHook(() => useMenu(source));
     expect(result.current.status).toBe('loading');
-    unmount();
+    await unmount();
     await act(async () => {
       resolveMenu(mockMenu);
     });
@@ -111,7 +149,7 @@ describe('useMenu', () => {
         }),
     };
     const { unmount } = await renderHook(() => useMenu(source));
-    unmount();
+    await unmount();
     await act(async () => {
       rejectMenu(new Error('late'));
     });

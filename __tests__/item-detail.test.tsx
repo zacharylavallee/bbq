@@ -1,11 +1,11 @@
 import { act, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
-import { renderRouter } from 'expo-router/testing-library';
-import { routesWithSource, successSource } from '../test-utils';
+import { mockMenu } from '../src/data/mockMenu';
+import { renderRoutesWithSource, successSource } from '../test-utils';
 
 describe('item detail screen', () => {
   it('shows details, catering tag, sold-out note, and not-found states', async () => {
-    await renderRouter(routesWithSource(successSource), {
+    await renderRoutesWithSource(successSource, undefined, {
       initialUrl: '/item/pitmaster-package',
     });
 
@@ -27,5 +27,18 @@ describe('item detail screen', () => {
       router.push('/item/nope');
     });
     await waitFor(() => expect(screen.getByText('Item not found')).toBeOnTheScreen());
+  });
+
+  it('shows the menu photo on the item detail screen', async () => {
+    const menu = {
+      ...mockMenu,
+      items: mockMenu.items.map((item) =>
+        item.id === 'brisket' ? { ...item, imageUrl: 'https://photos.test/brisket.jpg' } : item,
+      ),
+    };
+    await renderRoutesWithSource({ getMenu: jest.fn().mockResolvedValue(menu) }, undefined, {
+      initialUrl: '/item/brisket',
+    });
+    await waitFor(() => expect(screen.getByLabelText('Brisket photo')).toBeOnTheScreen());
   });
 });

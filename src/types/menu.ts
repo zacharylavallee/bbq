@@ -13,6 +13,8 @@ export interface MenuItem {
   description: string;
   priceCents: number;
   unit: MenuUnit;
+  sortOrder: number;
+  imagePath: string | null;
   imageUrl: string | null;
   isAvailable: boolean;
   isCatering: boolean;

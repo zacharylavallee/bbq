@@ -9,6 +9,8 @@ const baseItem: MenuItem = {
   description: 'Slow-smoked for 14 hours.',
   priceCents: 2800,
   unit: 'lb',
+  sortOrder: 1,
+  imagePath: null,
   imageUrl: null,
   isAvailable: true,
   isCatering: false,
@@ -32,6 +34,16 @@ describe('MenuItemRow', () => {
     expect(screen.queryByText('Sold out')).toBeNull();
   });
 
+  it('renders the remote photo when an image URL is available', async () => {
+    await render(
+      <MenuItemRow
+        item={{ ...baseItem, imageUrl: 'https://photos.test/brisket.jpg' }}
+        onPress={jest.fn()}
+      />,
+    );
+    expect(screen.getByLabelText('Brisket photo')).toBeOnTheScreen();
+  });
+
   it('has a button accessibility role and label', async () => {
     await render(<MenuItemRow item={baseItem} onPress={jest.fn()} />);
     expect(screen.getByRole('button', { name: 'Brisket, $28.00 / lb' })).toBeOnTheScreen();
@@ -47,7 +59,7 @@ describe('MenuItemRow', () => {
   it('fires onPress with the item', async () => {
     const onPress = jest.fn();
     await render(<MenuItemRow item={baseItem} onPress={onPress} />);
-    fireEvent.press(screen.getByRole('button'));
+    await fireEvent.press(screen.getByRole('button'));
     expect(onPress).toHaveBeenCalledWith(baseItem);
   });
 });

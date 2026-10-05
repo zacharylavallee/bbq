@@ -9,6 +9,8 @@ function makeItem(overrides: Partial<MenuItem>): MenuItem {
     description: 'desc',
     priceCents: 100,
     unit: 'each',
+    sortOrder: 0,
+    imagePath: null,
     imageUrl: null,
     isAvailable: true,
     isCatering: false,
@@ -49,12 +51,30 @@ describe('groupMenu', () => {
     expect(sections[0].data.map((i) => i.id)).toEqual(['1']);
   });
 
-  it('keeps input order of items within a category', () => {
+  it('sorts items by sort order and then name', () => {
     const menu: Menu = {
       categories: [{ id: 'a', name: 'A', sortOrder: 1 }],
-      items: [makeItem({ id: 'z' }), makeItem({ id: 'y' }), makeItem({ id: 'x' })],
+      items: [
+        makeItem({ id: 'z', sortOrder: 2 }),
+        makeItem({ id: 'y', sortOrder: 1 }),
+        makeItem({ id: 'x', sortOrder: 1, name: 'Alpha' }),
+      ],
     };
-    expect(groupMenu(menu)[0].data.map((i) => i.id)).toEqual(['z', 'y', 'x']);
+    expect(groupMenu(menu)[0].data.map((i) => i.id)).toEqual(['x', 'y', 'z']);
+  });
+
+  it('includes empty categories when requested', () => {
+    const menu: Menu = {
+      categories: [
+        { id: 'a', name: 'A', sortOrder: 1 },
+        { id: 'empty', name: 'Empty', sortOrder: 2 },
+      ],
+      items: [makeItem({ id: '1' })],
+    };
+    expect(groupMenu(menu, { includeEmpty: true }).map((section) => section.data)).toEqual([
+      [menu.items[0]],
+      [],
+    ]);
   });
 });
 

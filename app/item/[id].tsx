@@ -1,6 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { Image } from 'expo-image';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { useMenuSource } from '../../src/data/MenuSourceProvider';
+import { useMenuSource, useMenuVersion } from '../../src/data/MenuSourceProvider';
 import { useMenu } from '../../src/hooks/useMenu';
 import { findMenuItem } from '../../src/lib/menu';
 import { formatItemPrice } from '../../src/lib/money';
@@ -9,12 +11,17 @@ import { colors } from '../../src/theme';
 export default function ItemScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const source = useMenuSource();
-  const state = useMenu(source);
+  const version = useMenuVersion();
+  const state = useMenu(source, version);
 
   if (state.status === 'loading') {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.accent} />
+        <ActivityIndicator
+          accessibilityLabel="Loading menu item"
+          size="large"
+          color={colors.accent}
+        />
       </View>
     );
   }
@@ -41,6 +48,22 @@ export default function ItemScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: item.name }} />
+      {item.imageUrl ? (
+        <Image
+          accessibilityLabel={`${item.name} photo`}
+          source={{ uri: item.imageUrl }}
+          contentFit="cover"
+          style={styles.heroImage}
+        />
+      ) : (
+        <View
+          accessibilityRole="image"
+          accessibilityLabel={`${item.name} photo placeholder`}
+          style={styles.heroPlaceholder}
+        >
+          <Ionicons name="image-outline" size={56} color={colors.paper} />
+        </View>
+      )}
       <View style={styles.header}>
         <Text style={styles.name}>{item.name}</Text>
         {item.isCatering && <Text style={styles.cateringTag}>Catering</Text>}
@@ -88,6 +111,21 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'flex-start',
+  },
+  heroImage: {
+    aspectRatio: 4 / 3,
+    borderRadius: 12,
+    marginBottom: 16,
+    width: '100%',
+  },
+  heroPlaceholder: {
+    alignItems: 'center',
+    aspectRatio: 4 / 3,
+    backgroundColor: colors.charcoalLight,
+    borderRadius: 12,
+    justifyContent: 'center',
+    marginBottom: 16,
+    width: '100%',
   },
   name: {
     color: colors.text,

@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import { MenuItemRow } from '../../src/components/MenuItemRow';
-import { useMenuSource } from '../../src/data/MenuSourceProvider';
+import { useMenuSource, useMenuVersion } from '../../src/data/MenuSourceProvider';
 import { useMenu } from '../../src/hooks/useMenu';
 import { groupMenu } from '../../src/lib/menu';
 import { colors } from '../../src/theme';
@@ -9,7 +9,8 @@ import type { MenuItem } from '../../src/types/menu';
 
 export default function MenuScreen() {
   const source = useMenuSource();
-  const state = useMenu(source);
+  const version = useMenuVersion();
+  const state = useMenu(source, version);
   const router = useRouter();
 
   if (state.status === 'loading') {
